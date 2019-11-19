@@ -6,11 +6,23 @@ import numpy as np
 
 
 def lsm(n_inputs, n_classes, n_steps, epoches, x_train, x_test, y_train, y_test):
+    stdp = False  # incomplete
     dim1 = [3, 3, 15]
     r1 = reservoir.ReservoirLayer(n_inputs, 135, n_steps, dim1, is_input=True)
     s1 = feedforward.SpikingLayer(135, n_classes, n_steps)
     accuracy = 0
     best_acc_e = 0
+    
+    # train stdp
+    if stdp:
+        r1.stdp = True
+        print("start stdp for reservoir")
+        for i in range(20):
+            for i in tqdm(range(len(x_train))):
+                x = np.asarray(x_train[i].todense())
+                r1.forward(x)
+        r1.stdp = False
+        print("finish stdp")
 
     for e in range(epoches):
         for i in tqdm(range(len(x_train))):  # train phase

@@ -106,11 +106,3 @@ class SpikingLayer:
         self.w[self.w > self.weight_limit] = self.weight_limit
         self.w[self.w < -self.weight_limit] = -self.weight_limit
 
-        # for i in range(self.n_inputs):
-        #    if inputs[i] == 0:
-        #        continue
-        # for j in range(self.n_outputs):
-        #    if self.cal_mid < self.cal[j] < (self.cal_mid + self.cal_margin):
-        #        self.w[i, j] = self.w[i, j] + self.delta_pot / (1 + tmp / 25)
-        #    if (self.cal_mid - self.cal_margin) < self.cal < self.cal_mid:
-        #        self.w[i, j] = self.w[i, j] - self.delta_pot / (1 + tmp / 25)
