@@ -4,6 +4,7 @@ import torchvision.datasets
 import torchvision.transforms as transforms
 import numpy as np
 from scipy.sparse import coo_matrix
+import random
 
 
 def get_mnist(data_path):
@@ -17,30 +18,20 @@ def get_mnist(data_path):
     return trainset, testset, classes
 
 
-def genrate_poisson_spikes(data, n_steps, n_channels):
+def genrate_poisson_spikes(data, n_steps):
     row = []
     col = []
     val = []
-    filename = os.path.join(pathname, fn)
-    if os.path.isfile(filename):
-        label = i
-        with open(filename, 'r') as f:
-            data = np.loadtxt(f, dtype=int)
-            nrows, ncols = data.shape
-            for j in range(nrows):
-                if data[j, 0] == -1 or data[j, 1] >= n_steps:
-                    continue
-                row.append(data[j, 1])
-                col.append(data[j, 0])
+    n_channels = len(data)
+    for i in range(n_channels):
+        for j in range(n_steps):
+            if random.random() < data[i]:
+                row.append(j)
+                col.append(i)
                 val.append(1)
 
-        spike = coo_matrix((val, (row, col)), shape=(n_steps, n_channels))
-        if count < (0.8 * num_per_class):
-            x_train.append(spike)
-            y_train.append(label)
-        else:
-            x_test.append(spike)
-            y_test.append(label)
+    spike = coo_matrix((val, (row, col)), shape=(n_steps, n_channels))
+    return spike
 
 
 def loadTI46Alpha(data_path, num_per_class, n_steps, n_channels, dtype):
