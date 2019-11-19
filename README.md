@@ -1,8 +1,9 @@
 # LSM-Simulator
 
 ## Requirements
-###python 3.7
-###Install package
+python 3.7
+
+Install package:
 ```
 pip install -r requirements.txt 
 ```
