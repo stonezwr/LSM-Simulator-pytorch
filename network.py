@@ -1,12 +1,12 @@
-import reservoir
-import feedforward
-from tqdm import tqdm
-from scipy.sparse import coo_matrix
 import numpy as np
+from tqdm import tqdm
+
+import feedforward
+import reservoir
 
 
 def lsm(n_inputs, n_classes, n_steps, epoches, x_train, x_test, y_train, y_test):
-    stdp = False  # incomplete
+    stdp = True  # stdp enabled
     dim1 = [3, 3, 15]
     r1 = reservoir.ReservoirLayer(n_inputs, 135, n_steps, dim1, is_input=True)
     s1 = feedforward.SpikingLayer(135, n_classes, n_steps)
@@ -17,8 +17,9 @@ def lsm(n_inputs, n_classes, n_steps, epoches, x_train, x_test, y_train, y_test)
     if stdp:
         r1.stdp = True
         print("start stdp for reservoir")
-        for i in range(20):
+        for e_stdp in range(10):
             for i in tqdm(range(len(x_train))):
+                r1.reset()
                 x = np.asarray(x_train[i].todense())
                 r1.forward(x)
         r1.stdp = False
@@ -26,6 +27,8 @@ def lsm(n_inputs, n_classes, n_steps, epoches, x_train, x_test, y_train, y_test)
 
     for e in range(epoches):
         for i in tqdm(range(len(x_train))):  # train phase
+            r1.reset()
+            s1.reset()
             x = np.asarray(x_train[i].todense())
             o_r1 = r1.forward(x)
             o_s1 = s1.forward(o_r1, e, y_train[i])
@@ -35,6 +38,8 @@ def lsm(n_inputs, n_classes, n_steps, epoches, x_train, x_test, y_train, y_test)
 
         correct = 0
         for i in tqdm(range(len(x_test))):  # test phase
+            r1.reset()
+            s1.reset()
             x = np.asarray(x_test[i].todense())
             o_r1 = r1.forward(x)
             o_s1 = s1.forward(o_r1)

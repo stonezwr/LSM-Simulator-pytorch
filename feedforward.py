@@ -38,6 +38,7 @@ class SpikingLayer:
     def reset(self):
         self.v = np.zeros(self.n_outputs, dtype=self.dtype)
         self.syn = np.zeros(self.n_outputs, dtype=self.dtype)
+        self.cal = np.zeros(self.n_outputs, dtype=self.dtype)
 
     def init_input(self, num, is_input):
         if is_input:

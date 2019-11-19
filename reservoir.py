@@ -40,7 +40,8 @@ class ReservoirLayer:
         self.init_input(n_input_connect, is_input)
 
         self.w_r = np.zeros((self.n_outputs, self.n_outputs), dtype=self.dtype)
-        self.init_reservoir()
+        self.w_r[1, :] = 1
+
         self.v = np.zeros(self.n_outputs, dtype=self.dtype)
         self.syn = np.zeros(self.n_outputs, dtype=self.dtype)
         self.pre_out = np.zeros(self.n_outputs, dtype=self.dtype)
@@ -48,6 +49,9 @@ class ReservoirLayer:
     def reset(self):
         self.v = np.zeros(self.n_outputs, dtype=self.dtype)
         self.syn = np.zeros(self.n_outputs, dtype=self.dtype)
+        self.trace_x = np.zeros(self.n_outputs, dtype=self.dtype)
+        self.trace_y = np.zeros(self.n_outputs, dtype=self.dtype)
+        self.pre_out = np.zeros(self.n_outputs, dtype=self.dtype)
 
     def init_input(self, num, is_input):
         if is_input:
@@ -126,10 +130,12 @@ class ReservoirLayer:
                 w_tmp = self.w_r * self.trace_y
                 self.w_r[self.pre_out == 1, :] = self.w_r[self.pre_out == 1, :] - \
                                                  self.stdp_lambda * w_tmp[self.pre_out == 1, :]
-                w_tmp = self.w_r * self.trace_x
+                w_tmp = (self.w_r.T * self.trace_x).T
                 self.w_r[:, out == 1] = self.w_r[:, out == 1] + \
                                         self.stdp_lambda * w_tmp[:, out == 1]
                 self.trace_y[out == 1] = self.trace_y[out == 1] + 1
+                self.w_r[self.w_r > self.weight_limit] = self.weight_limit
+                self.w_r[self.w_r < -self.weight_limit] = -self.weight_limit
 
         outputs = np.stack(outputs)
         return outputs
