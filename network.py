@@ -12,14 +12,14 @@ def lsm(n_inputs, n_classes, n_steps, epoches, x_train, x_test, y_train, y_test)
     accuracy = 0
     best_acc_e = 0
 
-    for e in range(1):
+    for e in range(epoches):
         for i in tqdm(range(len(x_train))):  # train phase
             x = np.asarray(x_train[i].todense())
             o_r1 = r1.forward(x)
             o_s1 = s1.forward(o_r1, e, y_train[i])
             fire_count = np.sum(o_s1, axis=0)
-            print(y_train[i])
-            print(fire_count)
+            # print(y_train[i])
+            # print(fire_count)
 
         correct = 0
         for i in tqdm(range(len(x_test))):  # test phase
@@ -28,7 +28,7 @@ def lsm(n_inputs, n_classes, n_steps, epoches, x_train, x_test, y_train, y_test)
             o_s1 = s1.forward(o_r1)
 
             fire_count = np.sum(o_s1, axis=0)
-            print(fire_count)
+            # print(fire_count)
             index = np.argmax(fire_count)
             if index == y_test[i]:
                 correct = correct + 1

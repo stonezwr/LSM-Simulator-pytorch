@@ -12,6 +12,7 @@ def shuffle_dataset(data, label):
     data, label = zip(*c)
     return data, label
 
+
 if __name__ == "__main__":
     n_steps = 700
     n_channels = 78

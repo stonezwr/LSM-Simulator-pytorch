@@ -28,7 +28,7 @@ def loadTI46Alpha(data_path, num_per_class, n_steps, n_channels, dtype):
     x_test = []
     y_test = []
 
-    for i in range(1):
+    for i in range(26):
         pathname = os.path.join(data_path, str(i))
         count = 0
         for fn in os.listdir(pathname):

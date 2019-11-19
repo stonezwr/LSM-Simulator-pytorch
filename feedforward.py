@@ -1,24 +1,24 @@
-import math
 import numpy as np
 import random
 import matplotlib.pyplot as plot
 
 
-def plot_v(v, index):
-    f = plot.plot(v[:, index])
+def plot_v(v, num):
+    for i in range(num):
+        f = plot.plot(v[:, i])
     plot.show(f)
 
 
 class SpikingLayer:
     def __init__(self, n_inputs, n_outputs, n_steps, tau_m=64, tau_s=8, tau_c=64, cal_mid=5, cal_margin=3,
-                 threshold=20, refrac=2, weight_scale=1, weight_limit=8, is_input=False, n_input_connect=32,
+                 threshold=15, refrac=2, weight_scale=8, weight_limit=8, is_input=False, n_input_connect=32,
                  delta_pot=0.006, delta_dep=0.006, dtype=np.float32):
         self.dtype = dtype
         self.n_inputs = n_inputs
         self.n_outputs = n_outputs
-        self.decay_m = 0 if tau_m == 0 else float(np.exp(-1 / tau_m))
-        self.decay_s = 0 if tau_s == 0 else float(np.exp(-1 / tau_s))
-        self.decay_c = 0 if tau_c == 0 else float(np.exp(-1 / tau_c))
+        self.tau_m = tau_m
+        self.tau_s = tau_s
+        self.tau_c = tau_c
         self.threshold = threshold
         self.refrac = refrac
         self.weight_scale = weight_scale
@@ -44,10 +44,10 @@ class SpikingLayer:
             for pre in range(self.n_inputs):
                 for j in range(num):
                     post = random.randrange(self.n_outputs)
-                    self.w[pre][post] = random.uniform(-1, 1) * self.weight_scale * self.weight_limit
+                    self.w[pre, post] = self.w[pre, post] + random.uniform(-1, 1) * self.weight_scale
         else:
-            self.w = np.random.default_rng().normal(0.0, self.weight_scale / np.sqrt(self.n_inputs),
-                                                    size=(self.n_inputs, self.n_outputs))
+            self.w = np.random.rand(self.n_inputs, self.n_outputs)
+            self.w = self.w * 2 - 1
 
     def forward(self, inputs, epoch=-1, label=-1):
         h1 = np.matmul(inputs, self.w)
@@ -56,9 +56,9 @@ class SpikingLayer:
         cal_all = []
         ref = np.zeros(self.n_outputs)
         for t in range(self.n_steps):
-            self.syn = self.decay_s * self.syn + h1[t, :]
-            self.v = self.decay_m * self.v + self.syn
-            self.cal = self.decay_c * self.cal
+            self.syn = self.syn - self.syn / self.tau_s + h1[t, :]
+            self.v = self.v - self.v / self.tau_m + self.syn / self.tau_s
+            self.cal = self.cal - self.cal/self.tau_c
             if label >= 0:
                 teacher = np.zeros(self.n_outputs, dtype=np.int)
                 teacher[label] = 1
@@ -74,17 +74,16 @@ class SpikingLayer:
             out = np.zeros(self.n_outputs, dtype=self.dtype)
             out[self.v > self.threshold] = 1.0
             outputs.append(out)
-            ref[self.v > self.threshold] = self.refrac
 
             self.cal[self.v > self.threshold] = self.cal[self.v > self.threshold] + 1
+            cal_all.append(self.cal)
             if label >= 0:
                 self.calcuim_supervised_rule(epoch, np.asarray(inputs[t, :]))
-            cal_all.append(self.cal)
             self.v[self.v > self.threshold] = 0
+            ref[self.v > self.threshold] = self.refrac
         outputs = np.stack(outputs)
         v_all = np.stack(v_all)
         cal_all = np.stack(cal_all)
-        plot_v(cal_all, 0)
         return outputs
 
     def calcuim_supervised_rule(self, epoch, inputs):
@@ -93,7 +92,6 @@ class SpikingLayer:
         mask[inputs == 1, :] = mask[inputs == 1, :] + 1
         mask[:, (self.cal_mid < self.cal) & (self.cal < (self.cal_mid + self.cal_margin))] = \
             mask[:, (self.cal_mid < self.cal) & (self.cal < (self.cal_mid + self.cal_margin))] + 1
-
         val = self.delta_pot / (1 + epoch / 25)
         self.w[mask == 2] = self.w[mask == 2] + val
 
