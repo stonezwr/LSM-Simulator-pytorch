@@ -19,6 +19,10 @@ if __name__ == "__main__":
     n_classes = 26
     epoches = 300
     data_set = "TI46"
+    # classifier = "calcium_supervised"
+    # classifier = "svmcv"
+    classifier = "svmcv"
+
     dtype = np.float32
 
     # Check whether a GPU is available
@@ -47,9 +51,10 @@ if __name__ == "__main__":
         print("please choose correct dataset, MNIST or TI46")
         sys.exit(-1)
 
-    x_train, y_train = shuffle_dataset(x_train, y_train)
+    if classifier == "calcium_supervised":
+        x_train, y_train = shuffle_dataset(x_train, y_train)
 
-    accuracy, e = network.lsm(n_channels, n_classes, n_steps, epoches, x_train, x_test, y_train, y_test)
+    accuracy, e = network.lsm(n_channels, n_classes, n_steps, epoches, x_train, x_test, y_train, y_test, classifier)
     print("best accuracy: %0.2f%% is achieved at epoch %d" % (accuracy*100, e))
 
 

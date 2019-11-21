@@ -10,6 +10,7 @@ except:
     sys.exit(-1)
 
 from sklearn.model_selection import cross_val_score
+from sklearn import preprocessing
 from sklearn.model_selection import GridSearchCV
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.feature_selection import SelectKBest
@@ -74,52 +75,34 @@ def loadResponse(pathname):
     return samples, labels
 
 
-def cvSVM(X, y, response_path, nfold):
-    filename = response_path + "SVM_ovr_result.txt"
-    X = np.array(X)
-    #	print(X.shape)
-    clf = svm.LinearSVC(C=0.0001, multi_class='ovr')
-    #	sel = VarianceThreshold()
-    #	X2=sel.fit_transform(X1)
-    #	print(X2.shape)
-    #	X_new = SelectKBest(chi2, k=400).fit_transform(X2, y)
-    #	print(X_new.shape)
-    #	params={'C':[1e-5,1e-4,0.001,0.01,0.1,1,10]}
-    #	clf=GridSearchCV(svm.SVC(kernel='linear',decision_function_shape='ovr'),params,cv=5)
-    #	clf.fit(X,y)
-    #	print(clf.best_params_)
-    scores = cross_val_score(clf, X, y, cv=5)
-    #	print(scores)
-    #	print("Accuracy: %0.4f (+/- %0.4f)" % (scores.mean(), scores.std() * 2))
-    #	np.savetxt(filename, scores)
-    file_object = open(filename, 'a')
-    #	file_object.write(X.shape)
-    file_object.write("Accuracy: %0.4f (+/- %0.4f)" % (scores.mean(), scores.std() * 2))
-    file_object.close()
+def cvSVM(s, y, nfold):
+    samples_scaled = preprocessing.scale(s)
+    x = np.array(samples_scaled)
+
+    # sel = VarianceThreshold()
+    # X2=sel.fit_transform(X1)
+    # print(X2.shape)
+    # X_new = SelectKBest(chi2, k=400).fit_transform(X2, y)
+    # print(X_new.shape)
+    params = [{'C': [1, 10, 100, 1000], 'gamma': [0.001, 0.0001], 'kernel': ['rbf']}, ]
+    clf = GridSearchCV(svm.SVC(decision_function_shape='ovr'), params, cv=nfold, iid=False)
+    clf.fit(x, y)
+    scores = cross_val_score(clf, x, y, cv=nfold)
+    print("Accuracy: %0.4f (+/- %0.4f)" % (scores.mean(), scores.std() * 2))
+    return scores.mean()
 
 
-def trainTestSVM(samples, labels):
-    clf = svm.LinearSVC()
-    half = int(len(samples) / 2)
-    train = samples[: half]
-    train_labels = labels[: half]
-    test = samples[half:]
-    test_labels = labels[half:]
+def traintestSVM(train_samples, train_labels, test_samples, test_labels):
 
-    clf.fit(train, train_labels)
-    predict = clf.predict(test)
+    clf = svm.SVC(kernel='rbf', C=0.0001, gamma='auto', decision_function_shape='ovr')
+
+    train_scaled = preprocessing.scale(train_samples)
+    test_scaled = preprocessing.scale(test_samples)
+    clf.fit(train_scaled, train_labels)
+    predict = clf.predict(test_scaled)
     accuracy = 0
     for i in range(len(test_labels)):
         accuracy += test_labels[i] == predict[i]
+    accuracy = accuracy / float(len(test_labels))
 
-    len_ = len(test_labels)
-    print("Accuracy: %0.2f" % (accuracy / float(len_)))
-
-
-def main():
-    response_path = sys.argv[1]
-    samples, labels = loadResponse(response_path)
-    print(labels)
-    print(len(labels))
-    # 5 fold cross validation
-    cvSVM(samples, labels, response_path, nfold=5)
+    return accuracy
