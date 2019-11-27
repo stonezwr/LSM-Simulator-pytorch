@@ -11,7 +11,7 @@ def dist(p1, p2):
 class ReservoirLayer:
     def __init__(self, n_inputs, n_outputs, n_steps, dim, tau_m=64, tau_s=8,
                  threshold=15, refrac=2, weight_scale=8, weight_limit=8, is_input=False,
-                 n_input_connect=32, homeostasis=False, stdp=False, dtype=np.float32):
+                 n_input_connect=32, homeostasis=False, stdp_r=False, stdp_i=False, dtype=np.float32):
         self.dtype = dtype
         self.n_inputs = n_inputs
         self.n_outputs = n_outputs
@@ -24,13 +24,15 @@ class ReservoirLayer:
         self.weight_limit = weight_limit
         self.n_steps = n_steps
         self.homeostasis = homeostasis
-        self.stdp = stdp
+        self.stdp_r = stdp_r
+        self.stdp_i = stdp_i
         self.stdp_lambda = 1 / 512
         self.stdp_TAU_X_TRACE_E = 4
         self.stdp_TAU_X_TRACE_I = 2
         self.stdp_TAU_Y_TRACE_E = 8
         self.stdp_TAU_Y_TRACE_I = 4
-        self.trace_x = np.zeros(self.n_outputs, dtype=self.dtype)
+        self.trace_x_i = np.zeros(self.n_inputs, dtype=self.dtype)
+        self.trace_x_r = np.zeros(self.n_outputs, dtype=self.dtype)
         self.trace_y = np.zeros(self.n_outputs, dtype=self.dtype)
 
         self.excitatoty = np.random.rand(self.n_outputs)
@@ -49,7 +51,8 @@ class ReservoirLayer:
     def reset(self):
         self.v = np.zeros(self.n_outputs, dtype=self.dtype)
         self.syn = np.zeros(self.n_outputs, dtype=self.dtype)
-        self.trace_x = np.zeros(self.n_outputs, dtype=self.dtype)
+        self.trace_x_i = np.zeros(self.n_inputs, dtype=self.dtype)
+        self.trace_x_r = np.zeros(self.n_outputs, dtype=self.dtype)
         self.trace_y = np.zeros(self.n_outputs, dtype=self.dtype)
         self.pre_out = np.zeros(self.n_outputs, dtype=self.dtype)
 
@@ -120,22 +123,34 @@ class ReservoirLayer:
                 self.threshold[self.threshold < 8] = 8
                 self.threshold[self.threshold > 32] = 32
 
-            if self.stdp:
-                self.trace_x[self.pre_out == 1] = self.trace_x[self.pre_out == 1] + 1
-                self.trace_x[self.excitatoty == 1] = self.trace_x[self.excitatoty == 1] / self.stdp_TAU_X_TRACE_E
-                self.trace_x[self.excitatoty == -1] = self.trace_x[self.excitatoty == -1] / self.stdp_TAU_X_TRACE_I
+            if self.stdp_r or self.stdp_i:
                 self.trace_y[self.excitatoty == 1] = self.trace_y[self.excitatoty == 1] / self.stdp_TAU_Y_TRACE_E
                 self.trace_y[self.excitatoty == -1] = self.trace_y[self.excitatoty == -1] / self.stdp_TAU_Y_TRACE_I
+                self.trace_y[out == 1] = self.trace_y[out == 1] + 1
+
+            if self.stdp_r:
+                self.trace_x_r[self.excitatoty == 1] = self.trace_x_r[self.excitatoty == 1] / self.stdp_TAU_X_TRACE_E
+                self.trace_x_r[self.excitatoty == -1] = self.trace_x_r[self.excitatoty == -1] / self.stdp_TAU_X_TRACE_I
+                self.trace_x_r[self.pre_out == 1] = self.trace_x_r[self.pre_out == 1] + 1
 
                 w_tmp = self.w_r * self.trace_y
                 self.w_r[self.pre_out == 1, :] = self.w_r[self.pre_out == 1, :] - \
                                                  self.stdp_lambda * w_tmp[self.pre_out == 1, :]
-                w_tmp = (self.w_r.T * self.trace_x).T
-                self.w_r[:, out == 1] = self.w_r[:, out == 1] + \
-                                        self.stdp_lambda * w_tmp[:, out == 1]
-                self.trace_y[out == 1] = self.trace_y[out == 1] + 1
+                w_tmp = (self.w_r.T * self.trace_x_r).T
+                self.w_r[:, out == 1] = self.w_r[:, out == 1] + self.stdp_lambda * w_tmp[:, out == 1]
                 self.w_r[self.w_r > self.weight_limit] = self.weight_limit
                 self.w_r[self.w_r < -self.weight_limit] = -self.weight_limit
 
+            if self.stdp_i:
+                in_s = inputs[t, :]
+                self.trace_x_i[in_s == 1] = self.trace_x_i[in_s == 1] + 1
+                self.trace_x_i = self.trace_x_i / self.stdp_TAU_X_TRACE_E
+                w_tmp = self.w * self.trace_y
+                self.w[in_s == 1, :] = self.w[in_s == 1, :] - self.stdp_lambda * w_tmp[in_s == 1, :]
+                w_tmp = (self.w.T * self.trace_x_i).T
+                self.w[:, out == 1] = self.w[:, out == 1] + self.stdp_lambda * w_tmp[:, out == 1]
+
+                self.w[self.w > self.weight_limit] = self.weight_limit
+                self.w[self.w < -self.weight_limit] = -self.weight_limit
         outputs = np.stack(outputs)
         return outputs

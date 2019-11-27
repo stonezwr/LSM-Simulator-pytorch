@@ -6,3 +6,4 @@
 *.pyc
 .idea/LSM-Simulator.iml
 .idea/misc.xml
+*.xml

@@ -12,7 +12,7 @@ def plot_v(v, num):
 class SpikingLayer:
     def __init__(self, n_inputs, n_outputs, n_steps, tau_m=64, tau_s=8, tau_c=64, cal_mid=5, cal_margin=3,
                  threshold=15, refrac=2, weight_scale=8, weight_limit=8, is_input=False, n_input_connect=32,
-                 delta_pot=0.006, delta_dep=0.006, dtype=np.float32):
+                 delta_pot=0.006, delta_dep=0.006, stdp_i=False, dtype=np.float32):
         self.dtype = dtype
         self.n_inputs = n_inputs
         self.n_outputs = n_outputs
@@ -27,6 +27,12 @@ class SpikingLayer:
         self.cal_margin = cal_margin
         self.delta_pot = delta_pot
         self.delta_dep = delta_dep
+        self.stdp_i = stdp_i
+        self.stdp_lambda = 1 / 512
+        self.stdp_TAU_X_TRACE = 4
+        self.stdp_TAU_Y_TRACE = 8
+        self.trace_x = np.zeros(self.n_inputs, dtype=self.dtype)
+        self.trace_y = np.zeros(self.n_outputs, dtype=self.dtype)
         self.weight_limit = weight_limit
         self.w = np.zeros((self.n_inputs, self.n_outputs), dtype=self.dtype)
         self.init_input(n_input_connect, is_input)
@@ -82,6 +88,20 @@ class SpikingLayer:
                 self.calcuim_supervised_rule(epoch, np.asarray(inputs[t, :]))
             self.v[self.v > self.threshold] = 0
             ref[self.v > self.threshold] = self.refrac
+
+            if self.stdp_i:
+                in_s = inputs[t, :]
+                self.trace_x = self.trace_x / self.stdp_TAU_X_TRACE
+                self.trace_y = self.trace_y / self.stdp_TAU_Y_TRACE
+                self.trace_y[out == 1] = self.trace_y[out == 1] + 1
+                self.trace_x[in_s == 1] = self.trace_x[in_s == 1] + 1
+                w_tmp = self.w * self.trace_y
+                self.w[in_s == 1, :] = self.w[in_s == 1, :] - self.stdp_lambda * w_tmp[in_s == 1, :]
+                w_tmp = (self.w.T * self.trace_x).T
+                self.w[:, out == 1] = self.w[:, out == 1] + self.stdp_lambda * w_tmp[:, out == 1]
+
+                self.w[self.w > self.weight_limit] = self.weight_limit
+                self.w[self.w < -self.weight_limit] = -self.weight_limit
         outputs = np.stack(outputs)
         v_all = np.stack(v_all)
         cal_all = np.stack(cal_all)
@@ -106,4 +126,3 @@ class SpikingLayer:
 
         self.w[self.w > self.weight_limit] = self.weight_limit
         self.w[self.w < -self.weight_limit] = -self.weight_limit
-
