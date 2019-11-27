@@ -132,11 +132,14 @@ class ReservoirLayer:
                 self.trace_x_r[self.excitatoty == 1] = self.trace_x_r[self.excitatoty == 1] / self.stdp_TAU_X_TRACE_E
                 self.trace_x_r[self.excitatoty == -1] = self.trace_x_r[self.excitatoty == -1] / self.stdp_TAU_X_TRACE_I
                 self.trace_x_r[self.pre_out == 1] = self.trace_x_r[self.pre_out == 1] + 1
-
-                w_tmp = self.w_r * self.trace_y
+                f_pos = np.copy(self.w_r)
+                f_neg = np.copy(self.w_r)
+                # f_pos[f_pos >= 0] = self.weight_limit - f_pos[f_pos >= 0]
+                # f_pos[f_pos < 0] = - self.weight_limit - f_pos[f_pos < 0]
+                w_tmp = f_neg * self.trace_y
                 self.w_r[self.pre_out == 1, :] = self.w_r[self.pre_out == 1, :] - \
                                                  self.stdp_lambda * w_tmp[self.pre_out == 1, :]
-                w_tmp = (self.w_r.T * self.trace_x_r).T
+                w_tmp = (f_pos.T * self.trace_x_r).T
                 self.w_r[:, out == 1] = self.w_r[:, out == 1] + self.stdp_lambda * w_tmp[:, out == 1]
                 self.w_r[self.w_r > self.weight_limit] = self.weight_limit
                 self.w_r[self.w_r < -self.weight_limit] = -self.weight_limit

@@ -18,27 +18,20 @@ def lsm(n_inputs, n_classes, n_steps, epoches, x_train, x_test, y_train, y_test,
     
     # train stdp
     if stdp:
-        r1.stdp_i = True
+        # r1.stdp_i = True
         r1.stdp_r = True
+        # s1.stdp_i = True
         print("start stdp")
         for e_stdp in range(10):
             for i in tqdm(range(len(x_train))):
                 r1.reset()
-                x = np.asarray(x_train[i].todense())
-                r1.forward(x)
-        print("finish stdp")
-        r1.stdp_i = False
-        r1.stdp_r = False
-
-        s1.stdp_i = True
-        print("start stdp")
-        for e_stdp in range(10):
-            for i in tqdm(range(len(x_train))):
-                r1.reset()
+                s1.reset()
                 x = np.asarray(x_train[i].todense())
                 o_r1 = r1.forward(x)
                 s1.forward(o_r1)
         print("finish stdp")
+        r1.stdp_i = False
+        r1.stdp_r = False
         s1.stdp_i = False
 
     if classifier == "calcium_supervised":

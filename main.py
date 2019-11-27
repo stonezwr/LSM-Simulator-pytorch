@@ -19,6 +19,7 @@ if __name__ == "__main__":
     n_classes = 26
     epoches = 300
     data_set = "TI46"
+
     # classifier = "calcium_supervised"
     # classifier = "svmcv"
     classifier = "svmcv"
@@ -43,10 +44,9 @@ if __name__ == "__main__":
         y_test = np.array(testset.targets, dtype=np.int)
 
     elif data_set == "TI46":
-        num_per_class = 10
+        speaker_per_class = 1
         data_path = os.path.expanduser("./TI46_alpha")
-        x_train, x_test, y_train, y_test = loadDataset.loadTI46Alpha(data_path, num_per_class,
-                                                                     n_steps, n_channels, dtype)
+        x_train, x_test, y_train, y_test = loadDataset.loadTI46Alpha(data_path, speaker_per_class, n_steps, n_channels)
     else:
         print("please choose correct dataset, MNIST or TI46")
         sys.exit(-1)

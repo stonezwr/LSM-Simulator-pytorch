@@ -34,7 +34,7 @@ def genrate_poisson_spikes(data, n_steps):
     return spike
 
 
-def loadTI46Alpha(data_path, num_per_class, n_steps, n_channels, dtype):
+def loadTI46Alpha(data_path, speaker_per_class, n_steps, n_channels):
     if not os.path.exists(data_path):
         print('Given path {} not found'.format(data_path))
         sys.exit(-1)
@@ -45,10 +45,14 @@ def loadTI46Alpha(data_path, num_per_class, n_steps, n_channels, dtype):
 
     for i in range(26):
         pathname = os.path.join(data_path, str(i))
-        count = 0
         for fn in os.listdir(pathname):
             if fn[0] == '.':
                 continue
+            if speaker_per_class <= 8 and (fn[0] == 'm' or int(fn[1]) > speaker_per_class):
+                continue
+            elif 8 < speaker_per_class <= int(fn[1])+8 and fn[0] == 'm':
+                continue
+
             row = []
             col = []
             val = []
@@ -66,11 +70,10 @@ def loadTI46Alpha(data_path, num_per_class, n_steps, n_channels, dtype):
                         val.append(1)
 
                 spike = coo_matrix((val, (row, col)), shape=(n_steps, n_channels))
-                if count < (0.8 * num_per_class):
-                    x_train.append(spike)
-                    y_train.append(label)
-                else:
+                if int(fn[4]) == 3 or int(fn[4]) == 2:
                     x_test.append(spike)
                     y_test.append(label)
-            count = count + 1
+                else:
+                    x_train.append(spike)
+                    y_train.append(label)
     return x_train, x_test, y_train, y_test
