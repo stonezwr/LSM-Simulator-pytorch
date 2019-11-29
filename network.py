@@ -18,9 +18,9 @@ def lsm(n_inputs, n_classes, n_steps, epoches, x_train, x_test, y_train, y_test,
     
     # train stdp
     if stdp:
-        # r1.stdp_i = True
+        r1.stdp_i = True
         r1.stdp_r = True
-        # s1.stdp_i = True
+        s1.stdp_i = True
         print("start stdp")
         for e_stdp in range(10):
             for i in tqdm(range(len(x_train))):

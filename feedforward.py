@@ -31,6 +31,8 @@ class SpikingLayer:
         self.stdp_lambda = 1 / 512
         self.stdp_TAU_X_TRACE = 4
         self.stdp_TAU_Y_TRACE = 8
+        self.A_neg = 0.01
+        self.A_pos = 0.005
         self.trace_x = np.zeros(self.n_inputs, dtype=self.dtype)
         self.trace_y = np.zeros(self.n_outputs, dtype=self.dtype)
         self.weight_limit = weight_limit
@@ -95,9 +97,18 @@ class SpikingLayer:
                 self.trace_y = self.trace_y / self.stdp_TAU_Y_TRACE
                 self.trace_y[out == 1] = self.trace_y[out == 1] + 1
                 self.trace_x[in_s == 1] = self.trace_x[in_s == 1] + 1
-                w_tmp = self.w * self.trace_y
-                self.w[in_s == 1, :] = self.w[in_s == 1, :] - self.stdp_lambda * w_tmp[in_s == 1, :]
-                w_tmp = (self.w.T * self.trace_x).T
+
+                m_y = np.repeat(self.trace_y, self.n_inputs)
+                m_y = m_y.reshape((self.n_outputs, self.n_inputs))
+                m_y = m_y.T
+                w_tmp = self.A_neg * self.stdp_lambda * m_y
+                w_tmp[self.w < 0] = -w_tmp[self.w < 0]
+                self.w[in_s == 1, :] = self.w[in_s == 1, :] - w_tmp[in_s == 1, :]
+
+                m_x = np.repeat(self.trace_x, self.n_outputs)
+                m_x = m_x.reshape((self.n_inputs, self.n_outputs))
+                w_tmp = self.A_pos * self.stdp_lambda * m_x
+                w_tmp[self.w < 0] = -w_tmp[self.w < 0]
                 self.w[:, out == 1] = self.w[:, out == 1] + self.stdp_lambda * w_tmp[:, out == 1]
 
                 self.w[self.w > self.weight_limit] = self.weight_limit
