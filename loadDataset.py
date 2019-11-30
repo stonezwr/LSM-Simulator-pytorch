@@ -2,9 +2,9 @@ import os
 import sys
 import torchvision.datasets
 import torchvision.transforms as transforms
+import torch
+import torch.sparse as sparse
 import numpy as np
-from scipy.sparse import coo_matrix
-import random
 
 
 def get_mnist(data_path):
@@ -18,23 +18,7 @@ def get_mnist(data_path):
     return trainset, testset, classes
 
 
-def genrate_poisson_spikes(data, n_steps):
-    row = []
-    col = []
-    val = []
-    n_channels = len(data)
-    for i in range(n_channels):
-        for j in range(n_steps):
-            if random.random() < data[i]:
-                row.append(j)
-                col.append(i)
-                val.append(1)
-
-    spike = coo_matrix((val, (row, col)), shape=(n_steps, n_channels))
-    return spike
-
-
-def loadTI46Alpha(data_path, speaker_per_class, n_steps, n_channels):
+def loadTI46Alpha(device, data_path, speaker_per_class, n_steps, n_channels, dtype):
     if not os.path.exists(data_path):
         print('Given path {} not found'.format(data_path))
         sys.exit(-1)
@@ -68,8 +52,10 @@ def loadTI46Alpha(data_path, speaker_per_class, n_steps, n_channels):
                         row.append(data[j, 1])
                         col.append(data[j, 0])
                         val.append(1)
-
-                spike = coo_matrix((val, (row, col)), shape=(n_steps, n_channels))
+                i = torch.tensor([row, col]).to(device)
+                v = torch.tensor(val, dtype=dtype).to(device)
+                spike = sparse.FloatTensor(i, v, [n_steps, n_channels]).to(device)
+                # spike = torch.sparse_coo_tensor(i, v, [n_steps, n_channels], device=device)
                 if int(fn[4]) == 3 or int(fn[4]) == 2:
                     x_test.append(spike)
                     y_test.append(label)

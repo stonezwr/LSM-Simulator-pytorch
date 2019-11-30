@@ -1,4 +1,3 @@
-
 .idea/LSM-Simulator.iml
 .idea/LSM-Simulator.iml
 .idea/misc.xml
@@ -7,3 +6,5 @@
 .idea/LSM-Simulator.iml
 .idea/misc.xml
 *.xml
+.idea/LSM-Simulator-pytorch.iml
+.idea/LSM-Simulator-pytorch.iml

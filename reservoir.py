@@ -1,6 +1,6 @@
-import numpy as np
 import random
 import math
+import torch
 
 
 def dist(p1, p2):
@@ -9,16 +9,17 @@ def dist(p1, p2):
 
 
 class ReservoirLayer:
-    def __init__(self, n_inputs, n_outputs, n_steps, dim, tau_m=64, tau_s=8,
+    def __init__(self, device, n_inputs, n_outputs, n_steps, dim, tau_m=64, tau_s=8,
                  threshold=15, refrac=2, weight_scale=8, weight_limit=8, is_input=False,
-                 n_input_connect=32, homeostasis=False, stdp_r=False, stdp_i=False, dtype=np.float32):
+                 n_input_connect=32, homeostasis=False, stdp_r=False, stdp_i=False, dtype=torch.float):
+        self.device = device
         self.dtype = dtype
         self.n_inputs = n_inputs
         self.n_outputs = n_outputs
         self.dim = dim
         self.tau_m = tau_m
         self.tau_s = tau_s
-        self.threshold = np.ones(self.n_outputs, dtype=self.dtype) * threshold
+        self.threshold = torch.ones(self.n_outputs, device=self.device, dtype=self.dtype) * threshold
         self.refrac = refrac
         self.weight_scale = weight_scale
         self.weight_limit = weight_limit
@@ -33,30 +34,30 @@ class ReservoirLayer:
         self.stdp_TAU_Y_TRACE_I = 4
         self.A_neg = 0.01
         self.A_pos = 0.005
-        self.trace_x_i = np.zeros(self.n_inputs, dtype=self.dtype)
-        self.trace_x_r = np.zeros(self.n_outputs, dtype=self.dtype)
-        self.trace_y = np.zeros(self.n_outputs, dtype=self.dtype)
+        self.trace_x_i = torch.zeros(self.n_inputs, dtype=self.dtype, device=self.device)
+        self.trace_x_r = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
+        self.trace_y = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
 
-        self.excitatoty = np.random.rand(self.n_outputs)
+        self.excitatoty = torch.rand(self.n_outputs, dtype=self.dtype, device=self.device)
         self.excitatoty[self.excitatoty < 0.2] = -1
         self.excitatoty[self.excitatoty >= 0.2] = 1
-        self.w = np.zeros((self.n_inputs, self.n_outputs), dtype=self.dtype)
+        self.w = torch.zeros((self.n_inputs, self.n_outputs), dtype=self.dtype, device=self.device)
         self.init_input(n_input_connect, is_input)
 
-        self.w_r = np.zeros((self.n_outputs, self.n_outputs), dtype=self.dtype)
+        self.w_r = torch.zeros((self.n_outputs, self.n_outputs), dtype=self.dtype, device=self.device)
         self.w_r[1, :] = 1
 
-        self.v = np.zeros(self.n_outputs, dtype=self.dtype)
-        self.syn = np.zeros(self.n_outputs, dtype=self.dtype)
-        self.pre_out = np.zeros(self.n_outputs, dtype=self.dtype)
+        self.v = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
+        self.syn = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
+        self.pre_out = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
 
     def reset(self):
-        self.v = np.zeros(self.n_outputs, dtype=self.dtype)
-        self.syn = np.zeros(self.n_outputs, dtype=self.dtype)
-        self.trace_x_i = np.zeros(self.n_inputs, dtype=self.dtype)
-        self.trace_x_r = np.zeros(self.n_outputs, dtype=self.dtype)
-        self.trace_y = np.zeros(self.n_outputs, dtype=self.dtype)
-        self.pre_out = np.zeros(self.n_outputs, dtype=self.dtype)
+        self.v = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
+        self.syn = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
+        self.trace_x_i = torch.zeros(self.n_inputs, dtype=self.dtype, device=self.device)
+        self.trace_x_r = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
+        self.trace_y = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
+        self.pre_out = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
 
     def init_input(self, num, is_input):
         if is_input:
@@ -65,7 +66,7 @@ class ReservoirLayer:
                     post = random.randrange(self.n_outputs)
                     self.w[pre, post] = self.w[pre, post] + random.uniform(-1, 1) * self.weight_scale
         else:
-            self.w = np.random.rand(self.n_inputs, self.n_outputs)
+            self.w = torch.rand((self.n_inputs, self.n_outputs), dtype=self.dtype, device=self.device)
             self.w = self.w * 2 - 1
 
     def init_reservoir(self):
@@ -76,7 +77,7 @@ class ReservoirLayer:
         for i in range(self.dim[0]):
             for j in range(self.dim[1]):
                 for k in range(self.dim[2]):
-                    p.append(np.asarray([i, j, k]))
+                    p.append(torch.tensor([i, j, k], dtype=self.dtype, device=self.device))
         for i in range(self.n_outputs):
             for j in range(self.n_outputs):
                 if i == j:
@@ -101,18 +102,18 @@ class ReservoirLayer:
                     self.w_r[i][j] = val
 
     def forward(self, inputs):
-        h1 = np.matmul(inputs, self.w)
+        h1 = torch.matmul(inputs, self.w)
         outputs = []
-        ref = np.zeros(self.n_outputs)
+        ref = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
         for t in range(self.n_steps):
-            h_r = np.matmul(self.pre_out, self.w_r)  # w_r: in*out
+            h_r = torch.matmul(self.pre_out, self.w_r)  # w_r: in*out
             self.syn = self.syn - self.syn / self.tau_s + (h1[t, :] + h_r) * self.excitatoty
             self.v = self.v - self.v / self.tau_m + self.syn / self.tau_s
 
             self.v[ref > 0] = 0
             ref[ref > 0] = ref[ref > 0] - 1
             v_thr = self.v - self.threshold
-            out = np.zeros(self.n_outputs, dtype=self.dtype)
+            out = torch.zeros(self.n_outputs, dtype=self.dtype)
             out[v_thr > 0] = 1.0
             outputs.append(out)
             self.pre_out = out
@@ -135,15 +136,13 @@ class ReservoirLayer:
                 self.trace_x_r[self.excitatoty == -1] = self.trace_x_r[self.excitatoty == -1] / self.stdp_TAU_X_TRACE_I
                 self.trace_x_r[self.pre_out == 1] = self.trace_x_r[self.pre_out == 1] + 1
 
-                m_y = np.repeat(self.trace_y, self.n_outputs)
-                m_y = m_y.reshape((self.n_outputs, self.n_outputs))
-                m_y = m_y.T
+                m_y = self.trace_y.repeat(self.n_outputs, 1)
                 w_tmp = self.A_neg * self.stdp_lambda * m_y
                 w_tmp[self.w_r < 0] = -w_tmp[self.w_r < 0]
                 self.w_r[self.pre_out == 1, :] = self.w_r[self.pre_out == 1, :] - w_tmp[self.pre_out == 1, :]
 
-                m_x = np.repeat(self.trace_x_r, self.n_outputs)
-                m_x = m_x.reshape((self.n_outputs, self.n_outputs))
+                m_x = self.trace_x_r.repeat(self.n_outputs, 1)
+                torch.transpose(m_x, 0, 1)
                 w_tmp = self.A_pos * self.stdp_lambda * m_x
                 w_tmp[self.w_r < 0] = -w_tmp[self.w_r < 0]
                 self.w_r[:, out == 1] = self.w_r[:, out == 1] + w_tmp[:, out == 1]
@@ -151,23 +150,20 @@ class ReservoirLayer:
                 self.w_r[self.w_r < -self.weight_limit] = -self.weight_limit
 
             in_s = inputs[t, :]
-            if self.stdp_i and (np.sum(in_s) > 0 or np.sum(out) > 0):
+            if self.stdp_i and (torch.sum(in_s) > 0 or torch.sum(out) > 0):
                 in_s = inputs[t, :]
                 self.trace_x_i[in_s == 1] = self.trace_x_i[in_s == 1] + 1
                 self.trace_x_i = self.trace_x_i / self.stdp_TAU_X_TRACE_E
-                m_y = np.repeat(self.trace_y, self.n_inputs)
-                m_y = m_y.reshape((self.n_outputs, self.n_inputs))
-                m_y = m_y.T
+                m_y = self.trace_y.repeat(self.n_inputs, 1)
                 w_tmp = self.A_neg * self.stdp_lambda * m_y
                 w_tmp[self.w < 0] = -w_tmp[self.w < 0]
                 self.w[in_s == 1, :] = self.w[in_s == 1, :] - w_tmp[in_s == 1, :]
-                m_x = np.repeat(self.trace_x_i, self.n_outputs)
-                m_x = m_x.reshape((self.n_inputs, self.n_outputs))
+                m_x = torch.transpose(self.trace_x_i.repeat(self.n_outputs, 1), 0, 1)
                 w_tmp = self.A_pos * self.stdp_lambda * m_x
                 w_tmp[self.w < 0] = -w_tmp[self.w < 0]
                 self.w[:, out == 1] = self.w[:, out == 1] + w_tmp[:, out == 1]
 
                 self.w[self.w > self.weight_limit] = self.weight_limit
                 self.w[self.w < -self.weight_limit] = -self.weight_limit
-        outputs = np.stack(outputs)
+        outputs = torch.stack(outputs)
         return outputs
