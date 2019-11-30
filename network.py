@@ -22,7 +22,7 @@ def lsm(device, n_inputs, n_classes, n_steps, x_train, x_test, y_train, y_test, 
         for e_stdp in range(10):
             for i in tqdm(range(len(x_train))):
                 r1.reset()
-                x = x_train[i].to_dense()
+                x = x_train[i].to_dense().to(device)
                 o_r1 = r1.forward(x)
                 s1.forward(o_r1)
         print("finish stdp")
@@ -35,7 +35,7 @@ def lsm(device, n_inputs, n_classes, n_steps, x_train, x_test, y_train, y_test, 
         label = []
         for i in tqdm(range(len(x_train))):  # train phase
             r1.reset()
-            x = x_train[i].to_dense()
+            x = x_train[i].to_dense().to(device)
             o_r1 = r1.forward(x)
             fire_count = torch.sum(o_r1, dim=0)
             samples.append(fire_count.numpy())
@@ -43,7 +43,7 @@ def lsm(device, n_inputs, n_classes, n_steps, x_train, x_test, y_train, y_test, 
 
         for i in tqdm(range(len(x_test))):  # test phase
             r1.reset()
-            x = x_test[i].to_dense()
+            x = x_test[i].to_dense().to(device)
             o_r1 = r1.forward(x)
             fire_count = torch.sum(o_r1, dim=0)
             samples.append(fire_count.numpy())

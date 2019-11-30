@@ -52,9 +52,9 @@ def loadTI46Alpha(device, data_path, speaker_per_class, n_steps, n_channels, dty
                         row.append(data[j, 1])
                         col.append(data[j, 0])
                         val.append(1)
-                i = torch.tensor([row, col]).to(device)
-                v = torch.tensor(val, dtype=dtype).to(device)
-                spike = sparse.FloatTensor(i, v, [n_steps, n_channels]).to(device)
+                i = torch.tensor([row, col], dtype=torch.long)
+                v = torch.tensor(val, dtype=dtype)
+                spike = sparse.FloatTensor(i, v, [n_steps, n_channels])
                 # spike = torch.sparse_coo_tensor(i, v, [n_steps, n_channels], device=device)
                 if int(fn[4]) == 3 or int(fn[4]) == 2:
                     x_test.append(spike)

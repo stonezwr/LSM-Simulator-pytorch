@@ -113,7 +113,7 @@ class ReservoirLayer:
             self.v[ref > 0] = 0
             ref[ref > 0] = ref[ref > 0] - 1
             v_thr = self.v - self.threshold
-            out = torch.zeros(self.n_outputs, dtype=self.dtype)
+            out = torch.zeros(self.n_outputs, dtype=self.dtype, device=self.device)
             out[v_thr > 0] = 1.0
             outputs.append(out)
             self.pre_out = out
